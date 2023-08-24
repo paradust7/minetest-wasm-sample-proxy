@@ -64,6 +64,7 @@ export class Client {
 
     handle_close() {
         this.socket = null;
+        this.close();
     }
 
     handle_message(buffer, isBinary) {

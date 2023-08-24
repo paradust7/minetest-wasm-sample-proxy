@@ -57,7 +57,7 @@ class VPNTarget {
         }
         this.addr = `${this.ip}:${this.bindport}`;
         vpn.targets.set(this.addr, this);
-        client.log("VPN connect to ${this.addr}");
+        client.log(`VPN connect to ${this.addr}`);
     }
 
     // Forward a message from the client
@@ -92,6 +92,7 @@ class VPNTarget {
     }
 
     close() {
+        this.vpn.targets.delete(this.addr);
         this.client.close();
     }
 }
