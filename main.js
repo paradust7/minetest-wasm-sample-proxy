@@ -1,7 +1,6 @@
 'use strict';
 
-const PROXY_PORT = 8888;
-
+import { PROXY_PORT } from './settings.js';
 import { WebSocketServer } from 'ws';
 import { Client } from './client.js';
 

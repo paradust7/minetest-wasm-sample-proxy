@@ -1,8 +1,14 @@
 'use strict';
 
+import assert from 'assert';
+import { isIPv4 } from 'net';
+import { format } from 'util'; // node.js built-in
+
+import { DIRECT_PROXY } from './settings.js';
+import { ConnectProxy } from './ConnectProxy.js';
+import { UDPProxy } from './UDPProxy.js';
 import { extract_ip_chain, sanitize } from './util.js';
 import { vpn_make, vpn_connect} from './vpn.js';
-import { format } from 'util'; // node.js built-in
 const textDecoder = new TextDecoder();
 
 let lastlog = null;
@@ -99,6 +105,20 @@ export class Client {
                 return;
             }
             response = 'BIND OK';
+        } else if (command == 'PROXY') {
+            assert(tokens[2] == 'TCP' || tokens[2] == 'UDP');
+            const isUDP = (tokens[2] == 'UDP');
+            const ip = sanitize(tokens[3]);
+            const port = parseInt(sanitize(tokens[4]));
+            assert(isIPv4(ip));
+            assert(port >= 1 && port < 65536);
+            this.target = route(this, isUDP, ip, port);
+            if (!this.target) {
+                this.log(`Proxy to udp=${isUDP}, ip=${ip}, port=${port} rejected`);
+                response = 'PROXY FAIL';
+            } else {
+                response = 'PROXY OK';
+            }
         } else {
             this.log('Unhandled command: ', data);
             this.close();
@@ -107,4 +127,18 @@ export class Client {
         this.send(response);
     }
 
+}
+
+const PROXY_MAP = new Map(DIRECT_PROXY.map(([vip,ip,port]) => [vip, [ip, port]]));
+
+function route(client, isUDP, ip, port) {
+    if (!isUDP && ip == '10.0.0.1' && port == 8080) {
+        return new ConnectProxy(client);
+    }
+    if (isUDP && PROXY_MAP.has(ip)) {
+        let [real_ip, real_port] = PROXY_MAP.get(ip);
+        return new UDPProxy(client, real_ip, real_port);
+    }
+
+    return null;
 }
